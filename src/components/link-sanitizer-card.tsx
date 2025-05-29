@@ -16,7 +16,7 @@ const TRACKING_PARAMS_TO_REMOVE = [
   'fbclid', 'gclid', 'msclkid', 'dclid', 'zanpid', 'cjevent', 'cjdata',
   'aff', 'affiliate', 'affiliate_id', 'ref', 'referral', 'source', 'trk', 'trkid',
   'trkcampaign', 'mc_cid', 'mc_eid', 'igshid', 'si', 'yclid', '_hsenc', '_hsmi',
-  'hsctatracking', 'mkt_tok', 'vero_conv', 'vero_id', 'trk_contact', 'trk_msg', 'trk_module', 'trk_sid',
+  'hsctatracking', 'mkt_tok', 'vero_conv', 'vero_id', 'trk_contact', 'trk_msg', 'trk_module', 'trk_sid','Echobox',
 ].map(p => p.toLowerCase());
 
 interface SanitizeResult {

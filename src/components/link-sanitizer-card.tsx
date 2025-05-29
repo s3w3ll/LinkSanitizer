@@ -6,9 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Clipboard, Check, Youtube, AlertTriangle, RotateCcw, Sparkles, Eye } from 'lucide-react';
+import { Clipboard, Check, Youtube, AlertTriangle, RotateCcw, Sparkles, Eye, Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from '@/lib/utils';
+import { getLinkPreview } from '@/app/actions/getLinkPreview'; // New import
+import LinkPreviewDisplay from '@/components/ui/link-preview-display'; // New import
 
 const TRACKING_PARAMS_TO_REMOVE = [
   'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
@@ -16,7 +18,7 @@ const TRACKING_PARAMS_TO_REMOVE = [
   'fbclid', 'gclid', 'msclkid', 'dclid', 'zanpid', 'cjevent', 'cjdata',
   'aff', 'affiliate', 'affiliate_id', 'ref', 'referral', 'source', 'trk', 'trkid',
   'trkcampaign', 'mc_cid', 'mc_eid', 'igshid', 'si', 'yclid', '_hsenc', '_hsmi',
-  'hsctatracking', 'mkt_tok', 'vero_conv', 'vero_id', 'trk_contact', 'trk_msg', 'trk_module', 'trk_sid','echobox', // Added 'echobox'
+  'hsctatracking', 'mkt_tok', 'vero_conv', 'vero_id', 'trk_contact', 'trk_msg', 'trk_module', 'trk_sid','echobox',
 ].map(p => p.toLowerCase());
 
 interface SanitizeResult {
@@ -24,6 +26,14 @@ interface SanitizeResult {
   timestamp: string | null;
   error?: string;
   wasSanitized: boolean;
+}
+
+interface LinkPreviewData {
+  title?: string;
+  description?: string;
+  imageUrl?: string;
+  siteName?: string;
+  iconUrl?: string;
 }
 
 function sanitizeUrl(urlString: string): SanitizeResult {
@@ -96,7 +106,7 @@ function sanitizeUrl(urlString: string): SanitizeResult {
     return { cleaned, timestamp: timestampDisplay, wasSanitized: paramRemoved, error: undefined };
   } catch (e) {
      try {
-        new URL(urlString);
+        new URL(urlString); // Check if original was at least a valid URL structure
         return { cleaned: urlString, timestamp: null, error: "Could not process this URL type. Displaying original.", wasSanitized: false };
     } catch (originalError) {
         return { cleaned: '', timestamp: null, error: "Invalid URL format. Please enter a valid web address.", wasSanitized: false };
@@ -111,7 +121,12 @@ export default function LinkSanitizerCard() {
   const [isCopied, setIsCopied] = useState(false);
   const [inputError, setInputError] = useState<string | null>(null);
   const [wasSanitized, setWasSanitized] = useState(false);
+  
   const [showPreview, setShowPreview] = useState(false);
+  const [previewData, setPreviewData] = useState<LinkPreviewData | null>(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  
   const { toast } = useToast();
 
   useEffect(() => {
@@ -120,7 +135,11 @@ export default function LinkSanitizerCard() {
       setYoutubeTimestampDisplay(null);
       setInputError(null);
       setWasSanitized(false);
-      setShowPreview(false); // Reset preview visibility
+      // Reset preview states as well
+      setShowPreview(false);
+      setPreviewData(null);
+      setIsPreviewLoading(false);
+      setPreviewError(null);
       return;
     }
 
@@ -129,11 +148,15 @@ export default function LinkSanitizerCard() {
     setYoutubeTimestampDisplay(result.timestamp);
     setInputError(result.error || null);
     setWasSanitized(result.wasSanitized && !result.error);
-    // Automatically show preview if URL is cleaned and valid,
-    // but let's keep the explicit button for now.
-    // Consider changing setShowPreview(!!(result.cleaned && !result.error));
-    setShowPreview(false); // Reset preview when original URL changes
+    
+    // Reset preview when original URL (and thus cleaned URL) changes
+    setShowPreview(false);
+    setPreviewData(null);
+    setIsPreviewLoading(false);
+    setPreviewError(null);
+
   }, [originalUrl]);
+
 
   const handleCopy = useCallback(async () => {
     if (!cleanedUrl || inputError) return;
@@ -161,16 +184,56 @@ export default function LinkSanitizerCard() {
 
   const handleReset = () => {
     setOriginalUrl('');
-    // setShowPreview(false); // Already handled by useEffect on originalUrl change
   };
 
-  const togglePreview = () => {
-    if (cleanedUrl && !inputError) {
-      setShowPreview(prev => !prev);
-    } else {
-      setShowPreview(false);
+  const fetchPreviewData = async () => {
+    if (!cleanedUrl || inputError) return;
+
+    setIsPreviewLoading(true);
+    setPreviewError(null);
+    setPreviewData(null); // Clear old data before fetching new
+
+    try {
+      const result = await getLinkPreview(cleanedUrl);
+      if (result.data) {
+        setPreviewData(result.data);
+      } else {
+        setPreviewData(null); // Ensure data is null if error occurred but some old data might be there
+      }
+      setPreviewError(result.error); // Store error message even if some data is present
+    } catch (e: any) {
+      console.error("Error calling getLinkPreview:", e);
+      setPreviewData(null);
+      setPreviewError("An unexpected error occurred while fetching preview.");
+    } finally {
+      setIsPreviewLoading(false);
+      setShowPreview(true); // Show the preview area (which will display data, error, or loading)
     }
   };
+
+  const handlePreviewToggle = () => {
+    if (showPreview) { // If currently showing, hide it
+      setShowPreview(false);
+    } else { // If currently hidden...
+      if (previewData && !previewError && cleanedUrl === (previewData?.title ? originalUrl : cleanedUrl) ) { // ...and data is already loaded for current URL, just show it
+         // The check "cleanedUrl === (previewData?.title ? originalUrl : cleanedUrl)" is a bit of a heuristic
+         // to see if the preview data is relevant to the current cleanedUrl. A better check might be to store the
+         // URL for which previewData was fetched. For now, this aims to refetch if cleanedUrl changed significantly.
+        setShowPreview(true);
+      } else { // ...and data is not loaded (or there was an error, or URL changed), fetch it
+        fetchPreviewData();
+      }
+    }
+  };
+  
+  // Effect to reset preview states if cleanedUrl changes, ensuring fresh preview fetch
+  useEffect(() => {
+    setShowPreview(false);
+    setPreviewData(null);
+    setPreviewError(null);
+    setIsPreviewLoading(false);
+  }, [cleanedUrl]);
+
 
   return (
     <Card className="w-full shadow-xl">
@@ -237,12 +300,12 @@ export default function LinkSanitizerCard() {
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={togglePreview}
-                  disabled={!cleanedUrl || !!inputError}
+                  onClick={handlePreviewToggle}
+                  disabled={!cleanedUrl || !!inputError || isPreviewLoading}
                   aria-label={showPreview ? "Hide preview" : "Show preview"}
                   className="shrink-0"
                 >
-                  <Eye className="h-4 w-4" />
+                  {isPreviewLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
                 </Button>
               </div>
             ) : !inputError && originalUrl.trim() !== '' && (
@@ -263,23 +326,16 @@ export default function LinkSanitizerCard() {
         )}
 
         {showPreview && cleanedUrl && !inputError && (
-          <div className="space-y-2 pt-4">
-            <Label htmlFor="urlPreviewFrame" className="font-medium">URL Preview</Label>
-            <iframe
-              id="urlPreviewFrame"
-              src={cleanedUrl}
-              className="w-full h-80 rounded-md border border-input bg-background shadow-sm"
-              title="Cleaned URL Preview"
-              // sandbox="allow-scripts allow-same-origin" // Consider enabling sandbox attributes for security
-            />
-            <p className="text-xs text-muted-foreground">
-              Note: Some websites may not display correctly in this preview due to their security settings (e.g., X-Frame-Options).
-            </p>
-          </div>
+          <LinkPreviewDisplay 
+            isLoading={isPreviewLoading}
+            error={previewError}
+            data={previewData}
+            url={cleanedUrl}
+          />
         )}
 
         {youtubeTimestampDisplay && !inputError && cleanedUrl && (
-          <div className="space-y-1 pt-4"> {/* Adjusted pt-2 to pt-4 for consistency */}
+          <div className="space-y-1 pt-4">
             <div className="flex items-center gap-2 text-sm font-medium">
               <Youtube className="h-5 w-5 text-red-600 shrink-0" />
               <span>YouTube Timestamp Detected</span>
@@ -299,5 +355,3 @@ export default function LinkSanitizerCard() {
     </Card>
   );
 }
-
-    

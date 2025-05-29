@@ -19,7 +19,7 @@ export default function Home() {
         <LinkSanitizerCard />
       </main>
       <footer className="mt-10 sm:mt-12 text-center text-xs sm:text-sm text-muted-foreground">
-        <p>&copy; {new Date().getFullYear()} LinkSanitizer. Share links cleanly and privately.</p>
+        <p>LinkSanitizer. Share links cleanly and privately.</p>
       </footer>
     </div>
   );

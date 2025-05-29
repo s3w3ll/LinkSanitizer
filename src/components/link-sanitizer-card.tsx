@@ -6,9 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Clipboard, Check, Youtube, AlertTriangle, RotateCcw, Sparkles } from 'lucide-react';
+import { Clipboard, Check, Youtube, AlertTriangle, RotateCcw, Sparkles, Eye, Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from '@/lib/utils';
+import { getLinkPreview } from '@/app/actions/getLinkPreview'; // New import
+import LinkPreviewDisplay from '@/components/ui/link-preview-display'; // New import
 
 const TRACKING_PARAMS_TO_REMOVE = [
   'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
@@ -16,7 +18,7 @@ const TRACKING_PARAMS_TO_REMOVE = [
   'fbclid', 'gclid', 'msclkid', 'dclid', 'zanpid', 'cjevent', 'cjdata',
   'aff', 'affiliate', 'affiliate_id', 'ref', 'referral', 'source', 'trk', 'trkid',
   'trkcampaign', 'mc_cid', 'mc_eid', 'igshid', 'si', 'yclid', '_hsenc', '_hsmi',
-  'hsctatracking', 'mkt_tok', 'vero_conv', 'vero_id', 'trk_contact', 'trk_msg', 'trk_module', 'trk_sid','Echobox',
+  'hsctatracking', 'mkt_tok', 'vero_conv', 'vero_id', 'trk_contact', 'trk_msg', 'trk_module', 'trk_sid','echobox',
 ].map(p => p.toLowerCase());
 
 interface SanitizeResult {
@@ -26,13 +28,21 @@ interface SanitizeResult {
   wasSanitized: boolean;
 }
 
+interface LinkPreviewData {
+  title?: string;
+  description?: string;
+  imageUrl?: string;
+  siteName?: string;
+  iconUrl?: string;
+}
+
 function sanitizeUrl(urlString: string): SanitizeResult {
   if (!urlString.trim()) {
     return { cleaned: '', timestamp: null, wasSanitized: false };
   }
 
   let processedUrlString = urlString;
-  if (!urlString.match(/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//i)) { // Check if it has a scheme
+  if (!urlString.match(/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//i)) { 
     processedUrlString = `https://${urlString}`;
   }
   
@@ -45,7 +55,6 @@ function sanitizeUrl(urlString: string): SanitizeResult {
 
     const isYoutube = url.hostname.includes('youtube.com') || url.hostname.includes('youtu.be');
 
-    // Process query parameters
     for (const [key, value] of queryParams.entries()) {
       const lowerKey = key.toLowerCase();
       if (isYoutube && lowerKey === 't') {
@@ -62,9 +71,8 @@ function sanitizeUrl(urlString: string): SanitizeResult {
     }
     url.search = newQueryParams.toString();
 
-    // Process hash parameters
-    if (url.hash && url.hash.length > 1 && url.hash.includes('=')) { // e.g. #param=value, not just #section
-      const hashContent = url.hash.substring(1); // Remove leading '#'
+    if (url.hash && url.hash.length > 1 && url.hash.includes('=')) { 
+      const hashContent = url.hash.substring(1); 
       const currentHashParams = new URLSearchParams(hashContent);
       const newHashParams = new URLSearchParams();
       let actualHashChangeMade = false;
@@ -72,8 +80,8 @@ function sanitizeUrl(urlString: string): SanitizeResult {
       for (const [key, value] of currentHashParams.entries()) {
         const lowerKey = key.toLowerCase();
         if (TRACKING_PARAMS_TO_REMOVE.includes(lowerKey)) {
-          paramRemoved = true; // A parameter (overall) was removed
-          actualHashChangeMade = true; // Specifically a hash parameter was removed
+          paramRemoved = true; 
+          actualHashChangeMade = true; 
         } else {
           newHashParams.append(key, value);
         }
@@ -81,9 +89,8 @@ function sanitizeUrl(urlString: string): SanitizeResult {
 
       if (actualHashChangeMade) {
         const newHashString = newHashParams.toString();
-        url.hash = newHashString ? `#${newHashString}` : ''; // Set to new hash or remove if empty
+        url.hash = newHashString ? `#${newHashString}` : ''; 
       }
-      // If !actualHashChangeMade, url.hash remains untouched to preserve non-parameter hashes or hashes with only non-tracking params.
     }
     
     const cleaned = url.toString();
@@ -99,9 +106,7 @@ function sanitizeUrl(urlString: string): SanitizeResult {
     return { cleaned, timestamp: timestampDisplay, wasSanitized: paramRemoved, error: undefined };
   } catch (e) {
      try {
-        // Check if original string was already a valid URL (e.g. mailto:, custom schemes)
-        // that failed with https prepended
-        new URL(urlString);
+        new URL(urlString); // Check if original was at least a valid URL structure
         return { cleaned: urlString, timestamp: null, error: "Could not process this URL type. Displaying original.", wasSanitized: false };
     } catch (originalError) {
         return { cleaned: '', timestamp: null, error: "Invalid URL format. Please enter a valid web address.", wasSanitized: false };
@@ -116,6 +121,12 @@ export default function LinkSanitizerCard() {
   const [isCopied, setIsCopied] = useState(false);
   const [inputError, setInputError] = useState<string | null>(null);
   const [wasSanitized, setWasSanitized] = useState(false);
+  
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewData, setPreviewData] = useState<LinkPreviewData | null>(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  
   const { toast } = useToast();
 
   useEffect(() => {
@@ -124,6 +135,11 @@ export default function LinkSanitizerCard() {
       setYoutubeTimestampDisplay(null);
       setInputError(null);
       setWasSanitized(false);
+      // Reset preview states as well
+      setShowPreview(false);
+      setPreviewData(null);
+      setIsPreviewLoading(false);
+      setPreviewError(null);
       return;
     }
 
@@ -132,7 +148,15 @@ export default function LinkSanitizerCard() {
     setYoutubeTimestampDisplay(result.timestamp);
     setInputError(result.error || null);
     setWasSanitized(result.wasSanitized && !result.error);
+    
+    // Reset preview when original URL (and thus cleaned URL) changes
+    setShowPreview(false);
+    setPreviewData(null);
+    setIsPreviewLoading(false);
+    setPreviewError(null);
+
   }, [originalUrl]);
+
 
   const handleCopy = useCallback(async () => {
     if (!cleanedUrl || inputError) return;
@@ -161,6 +185,55 @@ export default function LinkSanitizerCard() {
   const handleReset = () => {
     setOriginalUrl('');
   };
+
+  const fetchPreviewData = async () => {
+    if (!cleanedUrl || inputError) return;
+
+    setIsPreviewLoading(true);
+    setPreviewError(null);
+    setPreviewData(null); // Clear old data before fetching new
+
+    try {
+      const result = await getLinkPreview(cleanedUrl);
+      if (result.data) {
+        setPreviewData(result.data);
+      } else {
+        setPreviewData(null); // Ensure data is null if error occurred but some old data might be there
+      }
+      setPreviewError(result.error); // Store error message even if some data is present
+    } catch (e: any) {
+      console.error("Error calling getLinkPreview:", e);
+      setPreviewData(null);
+      setPreviewError("An unexpected error occurred while fetching preview.");
+    } finally {
+      setIsPreviewLoading(false);
+      setShowPreview(true); // Show the preview area (which will display data, error, or loading)
+    }
+  };
+
+  const handlePreviewToggle = () => {
+    if (showPreview) { // If currently showing, hide it
+      setShowPreview(false);
+    } else { // If currently hidden...
+      if (previewData && !previewError && cleanedUrl === (previewData?.title ? originalUrl : cleanedUrl) ) { // ...and data is already loaded for current URL, just show it
+         // The check "cleanedUrl === (previewData?.title ? originalUrl : cleanedUrl)" is a bit of a heuristic
+         // to see if the preview data is relevant to the current cleanedUrl. A better check might be to store the
+         // URL for which previewData was fetched. For now, this aims to refetch if cleanedUrl changed significantly.
+        setShowPreview(true);
+      } else { // ...and data is not loaded (or there was an error, or URL changed), fetch it
+        fetchPreviewData();
+      }
+    }
+  };
+  
+  // Effect to reset preview states if cleanedUrl changes, ensuring fresh preview fetch
+  useEffect(() => {
+    setShowPreview(false);
+    setPreviewData(null);
+    setPreviewError(null);
+    setIsPreviewLoading(false);
+  }, [cleanedUrl]);
+
 
   return (
     <Card className="w-full shadow-xl">
@@ -224,6 +297,16 @@ export default function LinkSanitizerCard() {
                   {isCopied ? <Check className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}
                   <span className="ml-2 hidden sm:inline">{isCopied ? "Copied!" : "Copy"}</span>
                 </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handlePreviewToggle}
+                  disabled={!cleanedUrl || !!inputError || isPreviewLoading}
+                  aria-label={showPreview ? "Hide preview" : "Show preview"}
+                  className="shrink-0"
+                >
+                  {isPreviewLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
+                </Button>
               </div>
             ) : !inputError && originalUrl.trim() !== '' && (
                  <div className="p-2.5 bg-muted/50 rounded-md text-sm text-muted-foreground min-h-[40px] border border-input">
@@ -242,8 +325,17 @@ export default function LinkSanitizerCard() {
           </div>
         )}
 
+        {showPreview && cleanedUrl && !inputError && (
+          <LinkPreviewDisplay 
+            isLoading={isPreviewLoading}
+            error={previewError}
+            data={previewData}
+            url={cleanedUrl}
+          />
+        )}
+
         {youtubeTimestampDisplay && !inputError && cleanedUrl && (
-          <div className="space-y-1 pt-2">
+          <div className="space-y-1 pt-4">
             <div className="flex items-center gap-2 text-sm font-medium">
               <Youtube className="h-5 w-5 text-red-600 shrink-0" />
               <span>YouTube Timestamp Detected</span>

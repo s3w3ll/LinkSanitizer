@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
-import { Clipboard, Check, Youtube, AlertTriangle, RotateCcw, Sparkles, Eye, Loader2, X, Settings, Trash2 } from 'lucide-react';
+import { Clipboard, Check, Youtube, AlertTriangle, RotateCcw, Sparkles, Settings, Trash2, X } from 'lucide-react'; // Removed Eye, Loader2
 import { useToast } from "@/hooks/use-toast";
 import { cn } from '@/lib/utils';
 import { getLinkPreview } from '@/app/actions/getLinkPreview';
@@ -97,7 +97,7 @@ function sanitizeUrl(urlString: string, trackingParamsToRemove: string[]): Sanit
         url.hash = newHashString ? `#${newHashString}` : '';
       }
     }
-
+    
     const cleaned = url.toString();
 
     let timestampDisplay: string | null = null;
@@ -111,7 +111,7 @@ function sanitizeUrl(urlString: string, trackingParamsToRemove: string[]): Sanit
     return { cleaned, timestamp: timestampDisplay, wasSanitized: paramRemoved, error: undefined };
   } catch (e) {
     try {
-      new URL(urlString); // Check if original was at least a valid URL structure
+      new URL(urlString); 
       return { cleaned: urlString, timestamp: null, error: "Could not process this URL type. Displaying original.", wasSanitized: false };
     } catch (originalError) {
       return { cleaned: '', timestamp: null, error: "Invalid URL format. Please enter a valid web address.", wasSanitized: false };
@@ -137,7 +137,6 @@ export default function LinkSanitizerCard() {
 
   const { toast } = useToast();
 
-  // Load tracking params from localStorage on mount
   useEffect(() => {
     try {
       const storedParams = localStorage.getItem(LOCALSTORAGE_PARAMS_KEY);
@@ -149,12 +148,10 @@ export default function LinkSanitizerCard() {
       }
     } catch (error) {
       console.error("Error loading tracking params from localStorage:", error);
-      // Fallback to default if localStorage is corrupt or inaccessible
       setTrackingParams(DEFAULT_TRACKING_PARAMS);
     }
   }, []);
 
-  // Save tracking params to localStorage when they change
   useEffect(() => {
     try {
       localStorage.setItem(LOCALSTORAGE_PARAMS_KEY, JSON.stringify(trackingParams));
@@ -167,6 +164,36 @@ export default function LinkSanitizerCard() {
       });
     }
   }, [trackingParams, toast]);
+
+  const fetchPreviewData = useCallback(async () => {
+    if (!cleanedUrl || inputError) {
+      setShowPreview(false);
+      setPreviewData(null);
+      setPreviewError(null);
+      setIsPreviewLoading(false);
+      return;
+    }
+    setIsPreviewLoading(true);
+    setPreviewError(null);
+    setPreviewData(null);
+    setShowPreview(true); // Show preview area (will display loading state)
+
+    try {
+      const result = await getLinkPreview(cleanedUrl);
+      if (result.data) {
+        setPreviewData(result.data);
+      } else {
+        setPreviewData(null);
+      }
+      setPreviewError(result.error);
+    } catch (e: any) {
+      console.error("Error calling getLinkPreview:", e);
+      setPreviewData(null);
+      setPreviewError("An unexpected error occurred while fetching preview.");
+    } finally {
+      setIsPreviewLoading(false);
+    }
+  }, [cleanedUrl, inputError]);
 
 
   useEffect(() => {
@@ -188,12 +215,15 @@ export default function LinkSanitizerCard() {
     setInputError(result.error || null);
     setWasSanitized(result.wasSanitized && !result.error);
 
-    setShowPreview(false);
-    setPreviewData(null);
-    setIsPreviewLoading(false);
-    setPreviewError(null);
-
-  }, [originalUrl, trackingParams]); // Added trackingParams as a dependency
+    if (result.cleaned && !result.error) {
+      fetchPreviewData();
+    } else {
+      setShowPreview(false);
+      setPreviewData(null);
+      setPreviewError(null);
+      setIsPreviewLoading(false);
+    }
+  }, [originalUrl, trackingParams, fetchPreviewData]);
 
 
   const handleCopy = useCallback(async () => {
@@ -223,60 +253,6 @@ export default function LinkSanitizerCard() {
   const handleResetOriginalUrl = () => {
     setOriginalUrl('');
   };
-
-  const fetchPreviewData = async () => {
-    if (!cleanedUrl || inputError) return;
-    setIsPreviewLoading(true);
-    setPreviewError(null);
-    setPreviewData(null);
-    try {
-      const result = await getLinkPreview(cleanedUrl);
-      if (result.data) {
-        setPreviewData(result.data);
-      } else {
-        setPreviewData(null);
-      }
-      setPreviewError(result.error);
-    } catch (e: any) {
-      console.error("Error calling getLinkPreview:", e);
-      setPreviewData(null);
-      setPreviewError("An unexpected error occurred while fetching preview.");
-    } finally {
-      setIsPreviewLoading(false);
-      setShowPreview(true);
-    }
-  };
-
-  const handlePreviewToggle = () => {
-    if (showPreview) {
-      setShowPreview(false);
-    } else {
-      if (previewData && !previewError && cleanedUrl) {
-         // Basic check to see if existing previewData might be for the current cleanedUrl.
-         // A more robust check might involve storing the URL for which previewData was fetched.
-        const previewUrlIsCurrent = previewData.title ? (previewData.siteName ? true : false) : false; 
-        // This condition is simplified. Ideally, store the URL previewData was fetched for.
-        // For now, if data exists and cleanedUrl is present, assume it MIGHT be relevant.
-        if(previewUrlIsCurrent) { // Poor check, needs improvement if URLs change subtly but preview shouldn't
-             setShowPreview(true);
-        } else {
-            fetchPreviewData();
-        }
-      } else {
-        fetchPreviewData();
-      }
-    }
-  };
-
-  useEffect(() => {
-    if (cleanedUrl) { // Only reset if cleanedUrl changes and is non-empty
-      setShowPreview(false);
-      setPreviewData(null);
-      setPreviewError(null);
-      setIsPreviewLoading(false);
-    }
-  }, [cleanedUrl]);
-
 
   const handleAddParameter = () => {
     const paramToAdd = newParameterInput.trim().toLowerCase();
@@ -363,16 +339,6 @@ export default function LinkSanitizerCard() {
                 >
                   {isCopied ? <Check className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}
                   <span className="ml-2 hidden sm:inline">{isCopied ? "Copied!" : "Copy"}</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handlePreviewToggle}
-                  disabled={!cleanedUrl || !!inputError || isPreviewLoading}
-                  aria-label={showPreview ? "Hide preview" : "Show preview"}
-                  className="shrink-0"
-                >
-                  {isPreviewLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
                 </Button>
               </div>
             ) : !inputError && originalUrl.trim() !== '' && (
@@ -481,5 +447,3 @@ export default function LinkSanitizerCard() {
     </Card>
   );
 }
-
-    

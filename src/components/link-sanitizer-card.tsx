@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -15,7 +16,7 @@ const TRACKING_PARAMS_TO_REMOVE = [
   'fbclid', 'gclid', 'msclkid', 'dclid', 'zanpid', 'cjevent', 'cjdata',
   'aff', 'affiliate', 'affiliate_id', 'ref', 'referral', 'source', 'trk', 'trkid',
   'trkcampaign', 'mc_cid', 'mc_eid', 'igshid', 'si', 'yclid', '_hsenc', '_hsmi',
-  'hsctatracking', 'mkt_tok', 'vero_conv', 'vero_id', 'trk_contact', 'trk_msg', 'trk_module', 'trk_sid',
+  'hsctatracking', 'mkt_tok', 'vero_conv', 'vero_id', 'trk_contact', 'trk_msg', 'trk_module', 'trk_sid','Echobox',
 ].map(p => p.toLowerCase());
 
 interface SanitizeResult {
@@ -37,29 +38,54 @@ function sanitizeUrl(urlString: string): SanitizeResult {
   
   try {
     const url = new URL(processedUrlString);
-    const params = new URLSearchParams(url.search);
-    const newParams = new URLSearchParams();
+    const queryParams = new URLSearchParams(url.search);
+    const newQueryParams = new URLSearchParams();
     let youtubeTimestampSeconds: number | null = null;
     let paramRemoved = false;
 
     const isYoutube = url.hostname.includes('youtube.com') || url.hostname.includes('youtu.be');
 
-    for (const [key, value] of params.entries()) {
+    // Process query parameters
+    for (const [key, value] of queryParams.entries()) {
       const lowerKey = key.toLowerCase();
       if (isYoutube && lowerKey === 't') {
-        newParams.append(key, value);
+        newQueryParams.append(key, value);
         const parsedTime = parseInt(value, 10);
         if (!isNaN(parsedTime)) {
             youtubeTimestampSeconds = parsedTime;
         }
       } else if (!TRACKING_PARAMS_TO_REMOVE.includes(lowerKey)) {
-        newParams.append(key, value);
+        newQueryParams.append(key, value);
       } else {
         paramRemoved = true;
       }
     }
+    url.search = newQueryParams.toString();
 
-    url.search = newParams.toString();
+    // Process hash parameters
+    if (url.hash && url.hash.length > 1 && url.hash.includes('=')) { // e.g. #param=value, not just #section
+      const hashContent = url.hash.substring(1); // Remove leading '#'
+      const currentHashParams = new URLSearchParams(hashContent);
+      const newHashParams = new URLSearchParams();
+      let actualHashChangeMade = false;
+
+      for (const [key, value] of currentHashParams.entries()) {
+        const lowerKey = key.toLowerCase();
+        if (TRACKING_PARAMS_TO_REMOVE.includes(lowerKey)) {
+          paramRemoved = true; // A parameter (overall) was removed
+          actualHashChangeMade = true; // Specifically a hash parameter was removed
+        } else {
+          newHashParams.append(key, value);
+        }
+      }
+
+      if (actualHashChangeMade) {
+        const newHashString = newHashParams.toString();
+        url.hash = newHashString ? `#${newHashString}` : ''; // Set to new hash or remove if empty
+      }
+      // If !actualHashChangeMade, url.hash remains untouched to preserve non-parameter hashes or hashes with only non-tracking params.
+    }
+    
     const cleaned = url.toString();
     
     let timestampDisplay: string | null = null;

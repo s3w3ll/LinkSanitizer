@@ -14,6 +14,10 @@ import { cn } from '@/lib/utils';
 import { getLinkPreview } from '@/app/actions/getLinkPreview';
 import LinkPreviewDisplay from '@/components/ui/link-preview-display';
 
+// This is the global default list of tracking parameters.
+// It's used as the starting point for new users or when a user's localStorage is cleared.
+// To change the default list that all users start with (if they haven't customized their own),
+// you would modify this array directly in the code.
 const DEFAULT_TRACKING_PARAMS = [
   'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
   '_ga', 'ga_source', 'ga_medium', 'ga_term', 'ga_content', 'ga_campaign', 'ga_place',
@@ -447,3 +451,4 @@ export default function LinkSanitizerCard() {
     </Card>
   );
 }
+

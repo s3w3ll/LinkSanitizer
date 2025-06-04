@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
-import { Clipboard, Check, Youtube, AlertTriangle, RotateCcw, Sparkles, Settings, Trash2, X } from 'lucide-react'; // Removed Eye, Loader2
+import { Clipboard, Check, Youtube, AlertTriangle, RotateCcw, Sparkles, Settings, Trash2, X } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from '@/lib/utils';
 import { getLinkPreview } from '@/app/actions/getLinkPreview';
@@ -176,7 +176,7 @@ export default function LinkSanitizerCard() {
     setIsPreviewLoading(true);
     setPreviewError(null);
     setPreviewData(null);
-    setShowPreview(true); // Show preview area (will display loading state)
+    setShowPreview(true); 
 
     try {
       const result = await getLinkPreview(cleanedUrl);

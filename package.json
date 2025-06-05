@@ -6,6 +6,7 @@
     "dev": "next dev",
     "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
     "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
+    "prebuild": "node scripts/set-env.js",
     "build": "NEXT_PUBLIC_COMMIT_SHA=VERCEL_GIT_COMMIT_SHA next build",
     "start": "next start",
     "lint": "next lint",

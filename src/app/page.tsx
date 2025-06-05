@@ -1,7 +1,10 @@
+
 import LinkSanitizerCard from '@/components/link-sanitizer-card';
 import { Link2 } from 'lucide-react';
 
 export default function Home() {
+  const commitSha = process.env.NEXT_PUBLIC_COMMIT_SHA;
+
   return (
     <div className="flex flex-col items-center min-h-screen bg-background p-4 sm:p-8 selection:bg-primary/20 selection:text-primary">
       <header className="mb-6 sm:mb-8 text-center">
@@ -20,6 +23,11 @@ export default function Home() {
       </main>
       <footer className="mt-10 sm:mt-12 text-center text-xs sm:text-sm text-muted-foreground">
         <p>LinkSanitizer. Share links cleanly and privately.</p>
+        {commitSha && (
+          <p className="text-xs mt-2">
+            Commit: {commitSha.substring(0, 7)}
+          </p>
+        )}
       </footer>
     </div>
   );

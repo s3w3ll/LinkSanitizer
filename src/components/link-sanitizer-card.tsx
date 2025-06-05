@@ -8,19 +8,23 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
-import { Clipboard, Check, Youtube, AlertTriangle, RotateCcw, Sparkles, Settings, Trash2, X } from 'lucide-react'; // Removed Eye, Loader2
+import { Clipboard, Check, Youtube, AlertTriangle, RotateCcw, Sparkles, Settings, Trash2, X, PlusCircle } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from '@/lib/utils';
 import { getLinkPreview } from '@/app/actions/getLinkPreview';
 import LinkPreviewDisplay from '@/components/ui/link-preview-display';
 
+// This is the global default list of tracking parameters.
+// It's used as the starting point for new users or when a user's localStorage is cleared.
+// To change the default list that all users start with (if they haven't customized their own),
+// you would modify this array directly in the code.
 const DEFAULT_TRACKING_PARAMS = [
   'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
   '_ga', 'ga_source', 'ga_medium', 'ga_term', 'ga_content', 'ga_campaign', 'ga_place',
   'fbclid', 'gclid', 'msclkid', 'dclid', 'zanpid', 'cjevent', 'cjdata',
   'aff', 'affiliate', 'affiliate_id', 'ref', 'referral', 'source', 'trk', 'trkid',
   'trkcampaign', 'mc_cid', 'mc_eid', 'igshid', 'si', 'yclid', '_hsenc', '_hsmi',
-  'hsctatracking', 'mkt_tok', 'vero_conv', 'vero_id', 'trk_contact', 'trk_msg', 'trk_module', 'trk_sid', 'echobox',
+  'hsctatracking', 'mkt_tok', 'vero_conv', 'vero_id', 'trk_contact', 'trk_msg', 'trk_module', 'trk_sid', 'echobox', 'cid', 'gad_campaignid', 'gbraid', 'gad_source', 'gclsrc',
 ].map(p => p.toLowerCase());
 
 const LOCALSTORAGE_PARAMS_KEY = 'linkSanitizer_customTrackingParams';
@@ -30,6 +34,7 @@ interface SanitizeResult {
   timestamp: string | null;
   error?: string;
   wasSanitized: boolean;
+  suggestedParams?: string[];
 }
 
 interface LinkPreviewData {
@@ -42,7 +47,7 @@ interface LinkPreviewData {
 
 function sanitizeUrl(urlString: string, trackingParamsToRemove: string[]): SanitizeResult {
   if (!urlString.trim()) {
-    return { cleaned: '', timestamp: null, wasSanitized: false };
+    return { cleaned: '', timestamp: null, wasSanitized: false, suggestedParams: [] };
   }
 
   let processedUrlString = urlString;
@@ -56,6 +61,7 @@ function sanitizeUrl(urlString: string, trackingParamsToRemove: string[]): Sanit
     const newQueryParams = new URLSearchParams();
     let youtubeTimestampSeconds: number | null = null;
     let paramRemoved = false;
+    const foundNonBlockedQueryKeys = new Set<string>();
 
     const lowercasedTrackingParams = trackingParamsToRemove.map(p => p.toLowerCase());
     const isYoutube = url.hostname.includes('youtube.com') || url.hostname.includes('youtu.be');
@@ -70,12 +76,14 @@ function sanitizeUrl(urlString: string, trackingParamsToRemove: string[]): Sanit
         }
       } else if (!lowercasedTrackingParams.includes(lowerKey)) {
         newQueryParams.append(key, value);
+        foundNonBlockedQueryKeys.add(key);
       } else {
         paramRemoved = true;
       }
     }
     url.search = newQueryParams.toString();
 
+    const foundNonBlockedHashKeys = new Set<string>();
     if (url.hash && url.hash.length > 1 && url.hash.includes('=')) {
       const hashContent = url.hash.substring(1);
       const currentHashParams = new URLSearchParams(hashContent);
@@ -89,6 +97,7 @@ function sanitizeUrl(urlString: string, trackingParamsToRemove: string[]): Sanit
           actualHashChangeMade = true;
         } else {
           newHashParams.append(key, value);
+          foundNonBlockedHashKeys.add(key);
         }
       }
 
@@ -108,13 +117,15 @@ function sanitizeUrl(urlString: string, trackingParamsToRemove: string[]): Sanit
       timestampDisplay = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     }
 
-    return { cleaned, timestamp: timestampDisplay, wasSanitized: paramRemoved, error: undefined };
+    const suggestedParams = Array.from(new Set([...foundNonBlockedQueryKeys, ...foundNonBlockedHashKeys]));
+
+    return { cleaned, timestamp: timestampDisplay, wasSanitized: paramRemoved, error: undefined, suggestedParams };
   } catch (e) {
     try {
       new URL(urlString); 
-      return { cleaned: urlString, timestamp: null, error: "Could not process this URL type. Displaying original.", wasSanitized: false };
+      return { cleaned: urlString, timestamp: null, error: "Could not process this URL type. Displaying original.", wasSanitized: false, suggestedParams: [] };
     } catch (originalError) {
-      return { cleaned: '', timestamp: null, error: "Invalid URL format. Please enter a valid web address.", wasSanitized: false };
+      return { cleaned: '', timestamp: null, error: "Invalid URL format. Please enter a valid web address.", wasSanitized: false, suggestedParams: [] };
     }
   }
 }
@@ -126,6 +137,7 @@ export default function LinkSanitizerCard() {
   const [isCopied, setIsCopied] = useState(false);
   const [inputError, setInputError] = useState<string | null>(null);
   const [wasSanitized, setWasSanitized] = useState(false);
+  const [suggestedParams, setSuggestedParams] = useState<string[]>([]);
 
   const [showPreview, setShowPreview] = useState(false);
   const [previewData, setPreviewData] = useState<LinkPreviewData | null>(null);
@@ -176,7 +188,7 @@ export default function LinkSanitizerCard() {
     setIsPreviewLoading(true);
     setPreviewError(null);
     setPreviewData(null);
-    setShowPreview(true); // Show preview area (will display loading state)
+    setShowPreview(true); 
 
     try {
       const result = await getLinkPreview(cleanedUrl);
@@ -206,6 +218,7 @@ export default function LinkSanitizerCard() {
       setPreviewData(null);
       setIsPreviewLoading(false);
       setPreviewError(null);
+      setSuggestedParams([]);
       return;
     }
 
@@ -214,6 +227,7 @@ export default function LinkSanitizerCard() {
     setYoutubeTimestampDisplay(result.timestamp);
     setInputError(result.error || null);
     setWasSanitized(result.wasSanitized && !result.error);
+    setSuggestedParams(result.suggestedParams || []);
 
     if (result.cleaned && !result.error) {
       fetchPreviewData();
@@ -259,17 +273,26 @@ export default function LinkSanitizerCard() {
     if (paramToAdd && !trackingParams.includes(paramToAdd)) {
       setTrackingParams(prevParams => [...prevParams, paramToAdd].sort());
       setNewParameterInput('');
-      toast({ description: `Parameter "${paramToAdd}" added.` });
+      toast({ description: `Parameter "${paramToAdd}" added to block list.` });
     } else if (trackingParams.includes(paramToAdd)) {
-      toast({ description: `Parameter "${paramToAdd}" is already in the list.`, variant: "default" });
+      toast({ description: `Parameter "${paramToAdd}" is already in the block list.`, variant: "default" });
     } else if (!paramToAdd) {
        toast({ description: "Parameter cannot be empty.", variant: "destructive" });
+    }
+  };
+  
+  const handleQuickAddParameter = (paramToAdd: string) => {
+    const lowerParamToAdd = paramToAdd.toLowerCase();
+    if (lowerParamToAdd && !trackingParams.includes(lowerParamToAdd)) {
+      setTrackingParams(prevParams => [...prevParams, lowerParamToAdd].sort());
+      toast({ description: `Parameter "${lowerParamToAdd}" added to block list.` });
+      // Suggested params will update automatically on re-sanitize
     }
   };
 
   const handleRemoveParameter = (paramToRemove: string) => {
     setTrackingParams(prevParams => prevParams.filter(p => p !== paramToRemove));
-    toast({ description: `Parameter "${paramToRemove}" removed.` });
+    toast({ description: `Parameter "${paramToRemove}" removed from block list.` });
   };
 
   const handleResetToDefaults = () => {
@@ -358,6 +381,29 @@ export default function LinkSanitizerCard() {
           </div>
         )}
 
+        {suggestedParams.length > 0 && !inputError && cleanedUrl && (
+          <div className="pt-4 space-y-2">
+            <Label className="font-medium text-sm">Potential trackers found in this URL:</Label>
+            <div className="flex flex-wrap gap-2">
+              {suggestedParams.map((param) => (
+                <Badge key={param} variant="outline" className="py-1 px-2.5 text-xs items-center">
+                  <span className="mr-1.5">{param}</span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleQuickAddParameter(param)}
+                    className="h-5 w-5 hover:bg-primary/10 p-0.5 rounded-full"
+                    aria-label={`Add ${param} to block list`}
+                  >
+                    <PlusCircle className="h-4 w-4 text-primary hover:text-primary/80" />
+                  </Button>
+                </Badge>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">Click the <PlusCircle className="inline h-3 w-3 align-middle" /> to add them to your personal block list.</p>
+          </div>
+        )}
+
         {showPreview && cleanedUrl && !inputError && (
           <LinkPreviewDisplay
             isLoading={isPreviewLoading}
@@ -418,16 +464,16 @@ export default function LinkSanitizerCard() {
                 {trackingParams.length > 0 ? (
                   <div className="flex flex-wrap gap-2 p-3 border rounded-md bg-muted/30 max-h-60 overflow-y-auto">
                     {trackingParams.map((param) => (
-                      <Badge key={param} variant="secondary" className="text-sm font-normal py-1 px-2.5">
-                        {param}
+                      <Badge key={param} variant="secondary" className="text-sm font-normal py-1 px-2.5 items-center">
+                        <span className="mr-1.5">{param}</span>
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => handleRemoveParameter(param)}
-                          className="h-5 w-5 ml-1.5 opacity-70 hover:opacity-100"
+                          className="h-5 w-5 p-0.5 rounded-full hover:bg-destructive/20"
                           aria-label={`Remove ${param}`}
                         >
-                          <X className="h-3.5 w-3.5" />
+                          <X className="h-3.5 w-3.5 text-destructive/80 hover:text-destructive" />
                         </Button>
                       </Badge>
                     ))}

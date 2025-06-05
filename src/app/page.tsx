@@ -9,7 +9,7 @@ export default function Home() {
   if (commitShaEnv) {
     const potentialSha = commitShaEnv.substring(0, 7);
     // Check if it's 7 characters long and purely hexadecimal
-    if (potentialSha.length === 7 && /^[a-f0-9]{7}$/i.test(potentialSha)) {
+    if (potentialSha.length > 0 ) {
       displayableSha = potentialSha;
     }
   }

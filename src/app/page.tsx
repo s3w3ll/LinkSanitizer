@@ -17,7 +17,7 @@ export default function Home() {
           </h1>
         </div>
         <p className="text-base sm:text-lg text-muted-foreground max-w-md">
-          Paste any URL to remove tracking parameters and get a clean link instantly.
+          Paste any URL to remove tracking parameters and get a clean link instantly. 
         </p>
       </header>
       <main className="w-full max-w-2xl">

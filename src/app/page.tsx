@@ -32,11 +32,9 @@ export default function Home() {
       </main>
       <footer className="mt-10 sm:mt-12 text-center text-xs sm:text-sm text-muted-foreground">
         <p>LinkSanitizer. Share links cleanly and privately.</p>
-        {displayableSha && (
           <p className="text-xs mt-2">
             Commit: {displayableSha}
           </p>
-        )}
       </footer>
     </div>
   );

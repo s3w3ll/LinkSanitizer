@@ -4,15 +4,8 @@ import { Link2 } from 'lucide-react';
 
 export default function Home() {
   const commitShaEnv = process.env.NEXT_PUBLIC_COMMIT_SHA;
-  let displayableSha: string | null = null;
+  const displayableSha = commitShaEnv?.slice(0, 7) || "unknown";
 
-  if (commitShaEnv) {
-    const potentialSha = commitShaEnv.substring(0, 7);
-    // Check if it's 7 characters long and purely hexadecimal
-    if (potentialSha.length > 0 ) {
-      displayableSha = potentialSha;
-    }
-  }
 
   return (
     <div className="flex flex-col items-center min-h-screen bg-background p-4 sm:p-8 selection:bg-primary/20 selection:text-primary">

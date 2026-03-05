@@ -34,6 +34,7 @@ All sanitization logic runs entirely in the browser — no backend, no data coll
 
 ```bash
 npm install
+
 npm run dev
 ```
 

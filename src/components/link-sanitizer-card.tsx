@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Clipboard, Check, Youtube, AlertTriangle, RotateCcw, Sparkles, Settings, Trash2, X, PlusCircle } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from '@/lib/utils';
-import { getLinkPreview } from '@/app/actions/getLinkPreview';
+import { getLinkPreview } from '@/lib/getLinkPreview';
 import LinkPreviewDisplay from '@/components/ui/link-preview-display';
 
 // This is the global default list of tracking parameters.

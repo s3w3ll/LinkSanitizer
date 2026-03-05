@@ -3,9 +3,8 @@
 
 import type { FC } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { AlertTriangle, Globe } from 'lucide-react';
-import Image from 'next/image'; // Using next/image for optimized images if possible
 
 interface LinkPreviewData {
   title?: string;

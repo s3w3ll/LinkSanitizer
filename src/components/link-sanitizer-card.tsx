@@ -302,7 +302,7 @@ export default function LinkSanitizerCard() {
 
 
   return (
-    <Card className="w-full shadow-xl">
+    <Card className="w-full bg-white/75 dark:bg-white/5 backdrop-blur-xl border border-white/60 dark:border-white/10 shadow-2xl shadow-violet-200/30 dark:shadow-black/40">
       <CardHeader>
         <CardTitle className="text-2xl">Sanitize Your Link</CardTitle>
         <CardDescription>
@@ -355,8 +355,8 @@ export default function LinkSanitizerCard() {
                   onClick={handleCopy}
                   disabled={!cleanedUrl || isCopied}
                   className={cn(
-                    "bg-accent text-accent-foreground hover:bg-accent/90 transition-all duration-150 ease-in-out shrink-0",
-                    isCopied && "bg-green-600 hover:bg-green-700 scale-105"
+                    "rounded-full bg-gradient-to-r from-primary to-violet-500 text-white hover:opacity-90 transition-all duration-200 shadow-md shadow-primary/25 shrink-0",
+                    isCopied && "from-emerald-500 to-teal-500 shadow-emerald-300/30 scale-105"
                   )}
                   aria-label={isCopied ? "Copied" : "Copy cleaned URL"}
                 >
@@ -386,7 +386,7 @@ export default function LinkSanitizerCard() {
             <Label className="font-medium text-sm">Potential trackers found in this URL:</Label>
             <div className="flex flex-wrap gap-2">
               {suggestedParams.map((param) => (
-                <Badge key={param} variant="outline" className="py-1 px-2.5 text-xs items-center">
+                <Badge key={param} variant="outline" className="py-1 px-2.5 text-xs items-center border-accent/40 bg-accent/10 text-accent-foreground/80 hover:bg-accent/20 transition-colors">
                   <span className="mr-1.5">{param}</span>
                   <Button
                     variant="ghost"
@@ -449,7 +449,7 @@ export default function LinkSanitizerCard() {
                     onKeyDown={(e) => { if (e.key === 'Enter') handleAddParameter(); }}
                     className="text-sm"
                   />
-                  <Button onClick={handleAddParameter} className="shrink-0">Add</Button>
+                  <Button onClick={handleAddParameter} className="shrink-0 rounded-full bg-gradient-to-r from-primary to-violet-500 text-white hover:opacity-90 shadow-sm shadow-primary/20">Add</Button>
                 </div>
               </div>
 
@@ -464,7 +464,7 @@ export default function LinkSanitizerCard() {
                 {trackingParams.length > 0 ? (
                   <div className="flex flex-wrap gap-2 p-3 border rounded-md bg-muted/30 max-h-60 overflow-y-auto">
                     {trackingParams.map((param) => (
-                      <Badge key={param} variant="secondary" className="text-sm font-normal py-1 px-2.5 items-center">
+                      <Badge key={param} variant="secondary" className="text-sm font-normal py-1 px-2.5 items-center hover:bg-primary/15 transition-colors">
                         <span className="mr-1.5">{param}</span>
                         <Button
                           variant="ghost"

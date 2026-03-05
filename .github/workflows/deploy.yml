@@ -33,9 +33,10 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          # Sets the subdirectory path for GitHub Pages (e.g. /LinkSanitizer).
-          # If this repo is username.github.io (root), set to empty string: NEXT_PUBLIC_BASE_PATH=
-          NEXT_PUBLIC_BASE_PATH: /LinkSanitizer
+          # Custom domain (CNAME) → site is at root, so basePath must be empty.
+          # If you ever remove the custom domain and go back to username.github.io/LinkSanitizer,
+          # change this back to: NEXT_PUBLIC_BASE_PATH: /LinkSanitizer
+          NEXT_PUBLIC_BASE_PATH: ""
           NEXT_PUBLIC_COMMIT_SHA: ${{ github.sha }}
 
       - name: Upload Pages artifact

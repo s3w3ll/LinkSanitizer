@@ -2,7 +2,6 @@
 "use client";
 
 import type { FC } from 'react';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { AlertTriangle, Globe } from 'lucide-react';
 
@@ -24,14 +23,14 @@ interface LinkPreviewDisplayProps {
 const LinkPreviewDisplay: FC<LinkPreviewDisplayProps> = ({ isLoading, error, data, url }) => {
   if (isLoading) {
     return (
-      <Card className="mt-4 w-full shadow-md">
+      <Card className="mt-4 w-full bg-white/70 dark:bg-white/5 backdrop-blur-lg border border-white/50 dark:border-white/10 shadow-xl overflow-hidden">
         <CardContent className="p-4 space-y-3">
-          <Skeleton className="h-40 w-full rounded-md" />
+          <div className="shimmer h-40 w-full rounded-lg" />
           <div className="space-y-2">
-            <Skeleton className="h-5 w-3/4 rounded" />
-            <Skeleton className="h-4 w-full rounded" />
-            <Skeleton className="h-4 w-2/3 rounded" />
-            <Skeleton className="h-3 w-1/3 rounded mt-1" />
+            <div className="shimmer h-5 w-3/4 rounded-md" />
+            <div className="shimmer h-4 w-full rounded-md" />
+            <div className="shimmer h-4 w-2/3 rounded-md" />
+            <div className="shimmer h-3 w-1/3 rounded-md mt-1" />
           </div>
         </CardContent>
       </Card>
@@ -40,7 +39,7 @@ const LinkPreviewDisplay: FC<LinkPreviewDisplayProps> = ({ isLoading, error, dat
 
   if (error && !data?.title) { // Show error prominently if no partial data
     return (
-      <Card className="mt-4 w-full shadow-md border-destructive">
+      <Card className="mt-4 w-full bg-white/70 dark:bg-white/5 backdrop-blur-lg border border-destructive/50 shadow-xl overflow-hidden">
         <CardContent className="p-4 text-destructive flex flex-col items-center text-center">
           <AlertTriangle className="h-10 w-10 mb-2" />
           <p className="font-semibold">Could not load preview</p>
@@ -61,7 +60,7 @@ const LinkPreviewDisplay: FC<LinkPreviewDisplayProps> = ({ isLoading, error, dat
   const displayData = data || { title: new URL(url).hostname }; // Fallback to hostname if data is null but no error
 
   return (
-    <Card className="mt-4 w-full shadow-md overflow-hidden">
+    <Card className="mt-4 w-full bg-white/70 dark:bg-white/5 backdrop-blur-lg border border-white/50 dark:border-white/10 shadow-xl shadow-violet-100/40 dark:shadow-black/30 overflow-hidden">
       {displayData.imageUrl ? (
          <div className="relative w-full h-48 bg-muted">
             <img

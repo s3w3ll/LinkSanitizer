@@ -3,7 +3,7 @@
   "configurations": [
     {
       "name": "LinkSanitizer Dev",
-      "runtimeExecutable": "C:/nvm4w/nodejs/npm.cmd",
+      "runtimeExecutable": "npm.cmd",
       "runtimeArgs": ["run", "dev"],
       "port": 3000
     }

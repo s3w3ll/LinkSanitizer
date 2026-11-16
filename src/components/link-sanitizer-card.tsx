@@ -304,9 +304,9 @@ export default function LinkSanitizerCard() {
   return (
     <Card className="w-full bg-white/75 dark:bg-white/5 backdrop-blur-xl border border-white/60 dark:border-white/10 shadow-2xl shadow-violet-200/30 dark:shadow-black/40">
       <CardHeader>
-        <CardTitle className="text-2xl">Sanitize Your Link</CardTitle>
+        <CardTitle className="text-2xl">Clean a link</CardTitle>
         <CardDescription>
-          Paste a URL below to remove trackers and get a clean version.
+          Paste a URL below. Tracking parameters are removed instantly as you type.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -383,10 +383,11 @@ export default function LinkSanitizerCard() {
 
         {suggestedParams.length > 0 && !inputError && cleanedUrl && (
           <div className="pt-4 space-y-2">
-            <Label className="font-medium text-sm">Potential trackers found in this URL:</Label>
+            <Label className="font-medium text-sm">Other parameters in this link</Label>
+            <p className="text-xs text-muted-foreground">These aren&apos;t on your block list. Most are needed by the page, but if one looks like a tracker you can block it.</p>
             <div className="flex flex-wrap gap-2">
               {suggestedParams.map((param) => (
-                <Badge key={param} variant="outline" className="py-1 px-2.5 text-xs items-center border-accent/40 bg-accent/10 text-accent-foreground/80 hover:bg-accent/20 transition-colors">
+                <Badge key={param} variant="outline" className="py-1 px-2.5 text-xs items-center font-mono border-accent/40 bg-accent/10 text-foreground hover:bg-accent/20 transition-colors">
                   <span className="mr-1.5">{param}</span>
                   <Button
                     variant="ghost"
@@ -400,7 +401,7 @@ export default function LinkSanitizerCard() {
                 </Badge>
               ))}
             </div>
-            <p className="text-xs text-muted-foreground">Click the <PlusCircle className="inline h-3 w-3 align-middle" /> to add them to your personal block list.</p>
+            <p className="text-xs text-muted-foreground">Click <PlusCircle className="inline h-3 w-3 align-middle" /> to add one to your personal block list.</p>
           </div>
         )}
 

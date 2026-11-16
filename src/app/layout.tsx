@@ -17,8 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'LinkSanitizer - Clean Your URLs',
-  description: 'Remove tracking parameters from your links for cleaner sharing and improved privacy.',
+  title: 'LinkSanitizer: Remove tracking from links',
+  description: 'Strip UTM tags, click IDs and share trackers from any link before you share it. Free, no sign-up, runs entirely in your browser.',
 };
 
 export default function RootLayout({
